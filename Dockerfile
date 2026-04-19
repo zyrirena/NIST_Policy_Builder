@@ -23,4 +23,4 @@ RUN cd frontend && npm run build
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "cd backend && npm run db:migrate && npm run db:seed && npm start"]
+CMD ["/bin/sh", "-c", "cd backend && npm run db:migrate && npm run db:seed && npm start"]
