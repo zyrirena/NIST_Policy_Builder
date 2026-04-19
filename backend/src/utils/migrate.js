@@ -226,4 +226,4 @@ const migrate = async () => {
   }
 };
 
-migrate().catch(() => process.exit(1));
+module.exports = { migrate };
