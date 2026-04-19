@@ -3,6 +3,5 @@ buildCommand = "npm install && cd backend && npm install && cd ../frontend && np
 
 [deploy]
 startCommand = "node backend/src/index.js"
-preDeployCommand = "cd backend && node src/utils/migrate.js && node src/seeds/seed.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

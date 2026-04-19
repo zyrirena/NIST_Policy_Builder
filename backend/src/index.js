@@ -40,6 +40,28 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+// Run migrations and seed on startup
+const { migrate } = require('./utils/migrate');
+const { seed } = require('./seeds/seed');
+
+(async () => {
+  try {
+    console.log('Running database migrations...');
+    await migrate();
+    console.log('✅ Migrations completed');
+  } catch (err) {
+    console.warn('⚠️ Migrations failed (non-blocking):', err.message);
+  }
+
+  try {
+    console.log('Seeding database...');
+    await seed();
+    console.log('✅ Database seeded');
+  } catch (err) {
+    console.warn('⚠️ Seeding failed (non-blocking):', err.message);
+  }
+})();
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 NIST AI RMF Policy Builder API running on port ${PORT}`);
 });
