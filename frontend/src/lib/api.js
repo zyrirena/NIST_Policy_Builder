@@ -1,4 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Use relative URLs in production (same origin), absolute in dev
+const API_URL = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+  ? ''  // Production: same origin, relative paths
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
 
 class ApiClient {
   constructor() {
@@ -60,7 +63,6 @@ class ApiClient {
       throw new Error(data.error || `Request failed: ${res.status}`);
     }
 
-    // Check if response is PDF
     const contentType = res.headers.get('content-type');
     if (contentType && contentType.includes('application/pdf')) {
       return res.blob();
@@ -156,6 +158,12 @@ class ApiClient {
 
   // Maturity
   getMaturity(systemId) { return this.get(`/api/maturity/${systemId}`); }
+
+  // AI Advisor
+  getAdvisorStatus() { return this.get('/api/advisor/status'); }
+  askAdvisor(message, systemId) { return this.post('/api/advisor/ask', { message, systemId }); }
+  reviewPolicy(policyContent, systemId) { return this.post('/api/advisor/review-policy', { policyContent, systemId }); }
+  getRemediation(systemId) { return this.post('/api/advisor/remediation', { systemId }); }
 }
 
 const api = new ApiClient();

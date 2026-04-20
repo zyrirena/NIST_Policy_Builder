@@ -119,4 +119,4 @@ const seed = async () => {
   }
 };
 
-module.exports = { seed };
+seed().catch(() => process.exit(1));

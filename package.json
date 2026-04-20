@@ -1,18 +1,21 @@
 {
   "name": "nist-ai-rmf-policy-builder",
-  "version": "1.0.0",
-  "description": "NIST AI Risk Management Framework Policy Builder - SaaS Application",
+  "version": "2.0.0",
+  "description": "NIST AI RMF Policy Builder with Supabase + Claude AI Advisor",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build",
-    "start": "cd backend && npm start",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "db:migrate": "cd backend && npm run db:migrate",
-    "db:seed": "cd backend && npm run db:seed",
-    "setup": "npm run install:all && npm run db:migrate && npm run db:seed"
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && node src/index.js",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "db:migrate": "cd backend && node src/utils/migrate.js",
+    "db:seed": "cd backend && node src/seeds/seed.js",
+    "postinstall": "cd backend && npm install"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

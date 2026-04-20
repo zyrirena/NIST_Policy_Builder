@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm-9_x"]
+nixPkgs = ['nodejs_18']
 
 [phases.install]
-cmds = ["npm install", "cd backend && npm install", "cd ../frontend && npm install"]
+cmds = ['cd backend && npm install && cd ../frontend && npm install']
 
 [phases.build]
-cmds = ["cd frontend && npm run build"]
+cmds = ['cd frontend && npm run build']
 
 [start]
-cmd = "cd backend && npm run db:migrate && npm run db:seed && NODE_ENV=production npm start"
+cmd = 'cd backend && node src/index.js'

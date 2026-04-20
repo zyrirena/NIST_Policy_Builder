@@ -120,6 +120,7 @@ function Sidebar({ currentPage, setCurrentPage, user, onLogout }) {
     { id: 'documents', label: 'Evidence Vault', icon: Icons.Folder },
     { id: 'tasks', label: 'Tasks', icon: Icons.CheckCircle },
     { id: 'monitoring', label: 'Monitoring', icon: Icons.Monitor },
+    { id: 'advisor', label: 'AI Advisor', icon: Icons.Zap },
     { id: 'organization', label: 'Organization', icon: Icons.Settings },
   ];
 
@@ -1291,6 +1292,190 @@ function EmptyState({ icon: Icon, title, desc, action, actionLabel }) {
   );
 }
 
+// ==================== AI ADVISOR PAGE ====================
+function AdvisorPage() {
+  const [systems, setSystems] = useState([]);
+  const [selectedSystem, setSelectedSystem] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [available, setAvailable] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+
+  useEffect(() => {
+    api.getAdvisorStatus().then(r => { setAvailable(r.available); setCheckingStatus(false); }).catch(() => setCheckingStatus(false));
+    api.getSystems().then(r => setSystems(r.systems)).catch(() => {});
+  }, []);
+
+  const quickPrompts = [
+    'What are the top 3 risks for my AI system?',
+    'How should I implement human-in-the-loop controls?',
+    'What does the EU AI Act require for high-risk systems?',
+    'Suggest a roadmap to improve our maturity score',
+    'Review our gap analysis and suggest remediations',
+  ];
+
+  const handleSend = async (text) => {
+    const msg = text || input;
+    if (!msg.trim()) return;
+
+    const userMsg = { role: 'user', content: msg, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const result = await api.askAdvisor(msg, selectedSystem?.id);
+      const aiMsg = { role: 'assistant', content: result.response, timestamp: new Date(), usage: result.usage };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (err) {
+      const errMsg = { role: 'error', content: err.message, timestamp: new Date() };
+      setMessages(prev => [...prev, errMsg]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemediation = async () => {
+    if (!selectedSystem) return;
+    setLoading(true);
+    const userMsg = { role: 'user', content: `Generate remediation plan for ${selectedSystem.name}`, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
+
+    try {
+      const result = await api.getRemediation(selectedSystem.id);
+      const aiMsg = { role: 'assistant', content: result.response, timestamp: new Date(), usage: result.usage };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (err) {
+      const errMsg = { role: 'error', content: err.message, timestamp: new Date() };
+      setMessages(prev => [...prev, errMsg]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (checkingStatus) return <LoadingSpinner />;
+
+  if (!available) {
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-700">AI Policy Advisor</h1>
+          <p className="text-gray-500 text-sm mt-1">Powered by Claude</p>
+        </div>
+        <div className="bg-white rounded-xl p-8 border border-pastel-gray/30 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-pastel-yellow/30 text-yellow-600 mb-4"><Icons.Zap /></div>
+          <h3 className="font-semibold text-gray-700 text-lg">AI Advisor Not Configured</h3>
+          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
+            Add your <code className="px-1.5 py-0.5 bg-pastel-slate rounded text-xs font-mono">ANTHROPIC_API_KEY</code> environment variable to enable the AI Policy Advisor.
+          </p>
+          <p className="text-xs text-gray-400 mt-3">Get a key at <span className="text-brand-400">console.anthropic.com</span></p>
+          <div className="mt-6 p-4 rounded-xl bg-pastel-slate/50 text-left max-w-sm mx-auto">
+            <p className="text-xs font-mono text-gray-500">ANTHROPIC_API_KEY=sk-ant-api03-...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-700">AI Policy Advisor</h1>
+          <p className="text-gray-500 text-sm mt-1">Ask questions about NIST AI RMF, regulations, and governance</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-xs text-green-600 font-medium">Claude Online</span>
+        </div>
+      </div>
+
+      {/* System context selector */}
+      <div className="bg-white rounded-xl p-4 border border-pastel-gray/30 flex items-center gap-3">
+        <span className="text-sm text-gray-500">Context:</span>
+        <select className="flex-1 text-sm" value={selectedSystem?.id || ''} onChange={e => setSelectedSystem(systems.find(s => s.id === e.target.value) || null)}>
+          <option value="">General (no specific system)</option>
+          {systems.map(s => <option key={s.id} value={s.id}>{s.name} ({s.risk_level})</option>)}
+        </select>
+        {selectedSystem && (
+          <button onClick={handleRemediation} disabled={loading} className="btn btn-secondary text-xs px-3 py-1.5">
+            Get Remediation Plan
+          </button>
+        )}
+      </div>
+
+      {/* Quick prompts */}
+      {messages.length === 0 && (
+        <div className="bg-white rounded-xl p-6 border border-pastel-gray/30">
+          <h3 className="text-sm font-medium text-gray-600 mb-3">Quick Questions</h3>
+          <div className="flex flex-wrap gap-2">
+            {quickPrompts.map((prompt, i) => (
+              <button key={i} onClick={() => handleSend(prompt)} className="px-3 py-2 rounded-lg text-sm bg-pastel-slate hover:bg-brand-50 hover:text-brand-600 text-gray-600 transition-all text-left">
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chat messages */}
+      <div className="space-y-4 min-h-[300px]">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-xl p-4 ${
+              msg.role === 'user' ? 'bg-brand-400 text-white' :
+              msg.role === 'error' ? 'bg-pastel-red/30 text-red-700 border border-red-200' :
+              'bg-white border border-pastel-gray/30'
+            }`}>
+              {msg.role === 'assistant' && (
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-pastel-gray/30">
+                  <Icons.Zap />
+                  <span className="text-xs font-medium text-brand-500">Claude AI Advisor</span>
+                  {msg.usage && <span className="text-xs text-gray-400 ml-auto">{msg.usage.input_tokens + msg.usage.output_tokens} tokens</span>}
+                </div>
+              )}
+              <div className={`text-sm whitespace-pre-wrap ${msg.role === 'assistant' ? 'text-gray-700 leading-relaxed advisor-content' : ''}`}>
+                {msg.content}
+              </div>
+              <div className={`text-xs mt-2 ${msg.role === 'user' ? 'text-white/60' : 'text-gray-400'}`}>
+                {msg.timestamp.toLocaleTimeString()}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-white border border-pastel-gray/30 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-brand-300 border-t-brand-500 rounded-full animate-spin" />
+              <span className="text-sm text-gray-500">Claude is thinking...</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="sticky bottom-0 bg-pastel-cream pt-2">
+        <div className="bg-white rounded-xl border border-pastel-gray/30 p-3 flex gap-3">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            placeholder="Ask about NIST AI RMF, regulations, governance..."
+            className="flex-1 border-0 bg-transparent focus:ring-0 text-sm"
+            disabled={loading}
+          />
+          <button onClick={() => handleSend()} disabled={loading || !input.trim()} className="btn btn-primary px-4 py-2 text-sm">
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ==================== MAIN APP ====================
 export default function App() {
   const [user, setUser] = useState(null);
@@ -1336,6 +1521,7 @@ export default function App() {
       case 'documents': return <DocumentsPage />;
       case 'tasks': return <TasksPage />;
       case 'monitoring': return <MonitoringPage />;
+      case 'advisor': return <AdvisorPage />;
       case 'organization': return <OrganizationPage />;
       default: return <DashboardPage onNavigate={setCurrentPage} />;
     }
